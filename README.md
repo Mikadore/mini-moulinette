@@ -87,6 +87,26 @@ mini C03
 
 6. You can now run it for every assignment directory, where tests are provided. Have fun!
 
+## Python Runner (Typer)
+
+The repository now includes `mini_moul.py`, a Python CLI that does not rely on a hardcoded `~/mini-moulinette` path.
+
+From this repository root:
+
+```bash
+uv run mini_moul.py --target /path/to/C02
+```
+
+From inside an assignment directory (`C00`, `C01`, etc):
+
+```bash
+uv run --with-editable /path/to/mini-moulinette mini-moul
+```
+
+It keeps C tests separate and compiles/runs them from Python.
+The v2 runner uses `rich` for terminal output, runs exercises in parallel (`--jobs`),
+and creates a temporary workspace in `/tmp` by default (`--workspace-root`).
+
 ## Debugging
 
 The error/success messages should be explicit enough. However sometimes you will get segmentation fault or your code doesn't compile

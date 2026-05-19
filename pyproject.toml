@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.26.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mini-moulinette"
+version = "0.2.0"
+description = "Python/Typer runner for mini-moulinette C piscine tests"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "rich>=13,<14",
+  "typer>=0.12,<1.0",
+]
+
+[project.scripts]
+mini-moul = "mini_moul:cli"
+
+[tool.hatch.build.targets.wheel]
+include = ["mini_moul.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "mini_moul.py",
+  "mini-moul/**",
+  "README.md",
+  "LICENSE",
+  "MIGRATION_TO_PYTHON.md",
+  "pyproject.toml",
+]
