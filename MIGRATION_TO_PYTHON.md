@@ -64,6 +64,7 @@ Why this is the best path now:
 - Split the Python runner into a package (`mini_moul_app`) and reduced `mini_moul.py` to a thin compatibility entrypoint.
 - Added missing-exercise detection before compile/run, reporting skipped exercises as `MISSING` instead of surfacing compiler include errors.
 - Integrated per-exercise norminette checks into the execution pipeline without blocking compile/run, and report those notices in the summary.
+- Added a test-derived per-exercise whitelist check that warns about superfluous files without affecting scoring.
 - Removed obsolete shell orchestration files: `mini-moul/test.sh` and `mini-moul/config.sh`.
 
 ### File replacement mapping
@@ -117,3 +118,5 @@ Why this is the best path now:
   - `C05`: `88/100` (`ex08` missing)
   - `C06`: `100/100`
   - `C07`: `66/100` (`ex04` compile failure)
+- The extra-file whitelist check was validated against `42piscine/C00..C07` with no unexpected files reported in the current tree.
+- `C07/ex04/ft_convert_base2.c` is intentionally accepted by the whitelist because the test harness references it via `__has_include`.

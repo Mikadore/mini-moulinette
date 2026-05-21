@@ -38,10 +38,18 @@ def collect_student_refs(test_files: list[Path]) -> list[Path]:
     return sorted(refs)
 
 
+def whitelisted_student_paths(exercise_name: str, test_files: list[Path]) -> list[Path]:
+    return sorted(
+        ref
+        for ref in collect_student_refs(test_files)
+        if ref.parts and ref.parts[0] == exercise_name
+    )
+
+
 def missing_student_paths(
     target_dir: Path, exercise_name: str, test_files: list[Path]
 ) -> list[Path]:
-    refs = collect_student_refs(test_files)
+    refs = whitelisted_student_paths(exercise_name, test_files)
     if refs:
         return sorted(ref for ref in refs if not (target_dir / ref).exists())
 
@@ -50,3 +58,21 @@ def missing_student_paths(
         return [Path(exercise_name)]
     return []
 
+
+def unexpected_student_paths(
+    target_dir: Path, exercise_name: str, test_files: list[Path]
+) -> list[Path]:
+    exercise_dir = target_dir / exercise_name
+    if not exercise_dir.exists():
+        return []
+
+    refs = whitelisted_student_paths(exercise_name, test_files)
+    if not refs:
+        return []
+
+    actual_files = {
+        Path(exercise_name) / path.relative_to(exercise_dir)
+        for path in exercise_dir.rglob("*")
+        if path.is_file()
+    }
+    return sorted(actual_files - set(refs))

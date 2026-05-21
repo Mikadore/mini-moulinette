@@ -27,7 +27,11 @@ def print_summary(
     passed = sum(result.passed for result in results)
 
     for result in results:
-        if result.status == "ok" and result.has_norminette_issues:
+        if result.status == "ok" and result.has_extra_files:
+            result_parts.append(f"[orange3]{result.exercise_name}: WARN[/orange3]")
+            if not break_score:
+                marks += 1
+        elif result.status == "ok" and result.has_norminette_issues:
             result_parts.append(f"[orange3]{result.exercise_name}: NORM[/orange3]")
             if not break_score:
                 marks += 1
@@ -64,6 +68,7 @@ def print_summary(
 
     missing = [result for result in results if result.status == "missing"]
     norm_issues = [result for result in results if result.has_norminette_issues]
+    extra_files = [result for result in results if result.has_extra_files]
     failed = [result for result in results if result.status == "failed"]
     if missing:
         console.print("")
@@ -79,6 +84,14 @@ def print_summary(
         for result in norm_issues:
             console.print(f"[orange3]{result.exercise_name}/{result.test_name}[/orange3]")
             for message in result.norminette_messages:
+                console.print(message)
+            console.print("")
+    if extra_files:
+        console.print("")
+        console.print("[bold orange3]Extra file report[/bold orange3]")
+        for result in extra_files:
+            console.print(f"[orange3]{result.exercise_name}/{result.test_name}[/orange3]")
+            for message in result.extra_file_messages:
                 console.print(message)
             console.print("")
     if failed:

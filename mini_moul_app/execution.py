@@ -9,7 +9,11 @@ from pathlib import Path
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-from mini_moul_app.discovery import available_assignments, missing_student_paths
+from mini_moul_app.discovery import (
+    available_assignments,
+    missing_student_paths,
+    unexpected_student_paths,
+)
 from mini_moul_app.models import CommandResult, ExerciseResult
 from mini_moul_app.workspace import prepare_exercise_workspace
 
@@ -28,6 +32,18 @@ def extract_norminette_messages(output: str, stderr: str) -> list[str]:
     if stderr.strip():
         messages.append(stderr.rstrip())
     return messages
+
+
+def exercise_progress_description(result: ExerciseResult) -> str:
+    if result.status == "ok" and result.has_extra_files:
+        return f"[orange3]{result.exercise_name}: WARN[/orange3]"
+    if result.status == "ok" and result.has_norminette_issues:
+        return f"[orange3]{result.exercise_name}: NORM[/orange3]"
+    if result.status == "ok":
+        return f"[green]{result.exercise_name}: PASS[/green]"
+    if result.status == "missing":
+        return f"[yellow]{result.exercise_name}: MISSING[/yellow]"
+    return f"[red]{result.exercise_name}: FAIL[/red]"
 
 
 def run_command(command: list[str], cwd: Path, timeout: float) -> CommandResult:
@@ -78,6 +94,13 @@ def run_exercise(
         result.status = "failed"
         result.errors.append(f"{exercise_name} has no test file.")
         return result
+
+    unexpected_paths = unexpected_student_paths(target_dir, exercise_name, source_test_files)
+    if unexpected_paths:
+        result.extra_file_messages.append(
+            "Unexpected files not in whitelist: "
+            + ", ".join(path.as_posix() for path in unexpected_paths)
+        )
 
     missing_paths = missing_student_paths(target_dir, exercise_name, source_test_files)
     if missing_paths:
@@ -307,15 +330,11 @@ def run_assignment_tests_parallel(
                             errors=[f"Internal runner error: {exc}"],
                         )
                     results[exercise_name] = result
-                    if result.status == "ok" and result.has_norminette_issues:
-                        description = f"[orange3]{exercise_name}: NORM[/orange3]"
-                    elif result.status == "ok":
-                        description = f"[green]{exercise_name}: PASS[/green]"
-                    elif result.status == "missing":
-                        description = f"[yellow]{exercise_name}: MISSING[/yellow]"
-                    else:
-                        description = f"[red]{exercise_name}: FAIL[/red]"
-                    progress.update(task_id, description=description, completed=1)
+                    progress.update(
+                        task_id,
+                        description=exercise_progress_description(result),
+                        completed=1,
+                    )
 
     ordered_results = [results[exercise_name] for exercise_name in exercise_names]
     return ordered_results, len(exercise_names)
