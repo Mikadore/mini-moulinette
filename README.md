@@ -21,91 +21,72 @@ This is now day 11 of piscine. I have wasted so many hours getting evaluated, do
 
 # Updating
 
-Mini moulinette is updated daily, to update:
+If you installed `mini-moulinette` in editable mode, updating is just:
 
 ```bash
-cd ~/mini-moulinette
-```
-
-```bash
+cd /path/to/mini-moulinette
 git pull
 ```
 
+The installed `mini-moul` binary will pick up the new code without a reinstall.
 
-## Get Started
+## Install
 
 > ***Warning***
 > Mini moulinette is not 100% accurate, the tests may not cover every edge cases like moulinette. Use with caution.
 
-1. Go to your root `~` directory.
+1. Install `uv`.
 
-```bash
-cd ~
-```
-
-
-2. Clone the git there.
+2. Clone this repository wherever you want.
 
 ```bash
 git clone https://github.com/khairulhaaziq/mini-moulinette.git
 ```
 
-
-3. Now create an alias for it.
-
-- zsh:
-
-```zsh
-echo "alias mini='~/mini-moulinette/mini-moul.sh'" >> ~/.zshrc && source ~/.zshrc
-```
-
-- bash:
+3. Install the CLI as an editable tool.
 
 ```bash
-echo "alias mini='~/mini-moulinette/mini-moul.sh'" >> ~/.bashrc && source ~/.bashrc
+uv tool install --editable /path/to/mini-moulinette
 ```
 
+4. Ensure the tool bin directory is on your `PATH`.
 
-4. Go to your assignment directory where you want to test: e.g: C02 directory
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+5. Run it from inside an assignment directory:
 
 ```bash
 cd C02
+mini-moul
 ```
 
-
-5. Run using command `mini` with assignment number as argument. e.g: C02.
+Or from anywhere with an explicit target:
 
 ```bash
-mini C02
+mini-moul --target /path/to/C02
 ```
 
-e.g: C03
+6. If you still want the old shell alias:
 
-```bash
-mini C03
+```zsh
+alias mini='mini-moul'
 ```
 
-6. You can now run it for every assignment directory, where tests are provided. Have fun!
+## Compatibility Wrapper
 
-## Python Runner (Typer)
+`mini-moul.sh` now acts as a drop-in compatibility shim. It bootstraps the editable tool install from the local checkout and then runs the Python CLI, so existing aliases that point at the script can keep working.
 
-The repository now includes `mini_moul.py`, a Python CLI that does not rely on a hardcoded `~/mini-moulinette` path.
+## Development Runner
 
-From this repository root:
+For development from this repository root:
 
 ```bash
 uv run mini_moul.py --target /path/to/C02
 ```
 
-From inside an assignment directory (`C00`, `C01`, etc):
-
-```bash
-uv run --with-editable /path/to/mini-moulinette mini-moul
-```
-
-It keeps C tests separate and compiles/runs them from Python.
-The v2 runner uses `rich` for terminal output, runs exercises in parallel (`--jobs`),
-and creates a temporary workspace in `/tmp` by default (`--workspace-root`).
+The v2 runner keeps C tests separate and compiles/runs them from Python. It uses `rich` for terminal output, runs exercises in parallel (`--jobs`), and creates a temporary workspace in `/tmp` by default (`--workspace-root`).
 
 ## Debugging
 

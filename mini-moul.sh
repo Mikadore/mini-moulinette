@@ -1,41 +1,28 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-source ~/mini-moulinette/mini-moul/config.sh
-# assignment name
-assignment=NULL
+set -euo pipefail
 
-function handle_sigint {
-  echo "${RED}Script aborted by user. Cleaning up..."
-  rm -R ../mini-moul
-  echo ""
-  echo "${GREEN}Cleaning process done.${DEFAULT}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
+
+ensure_uv() {
+  if command -v uv >/dev/null 2>&1; then
+    return
+  fi
+
+  printf 'uv is required to bootstrap mini-moul.\n' >&2
+  printf 'Install uv, then rerun this script.\n' >&2
   exit 1
 }
 
-# Function to determine if current directory matches a pattern
-detect_assignment() {
-  assignment=$(basename "$(pwd)")
-  [[ $assignment =~ ^C(0[0-9]|1[0-3])$ ]]
+bootstrap_tool() {
+  uv tool install --editable --force "$REPO_ROOT" >/dev/null
 }
 
-if detect_assignment; then
-  cp -R ~/mini-moulinette/mini-moul mini-moul
-  run_norminette
-  trap handle_sigint SIGINT
-  cd mini-moul
-  ./test.sh "$assignment"
-  rm -R ../mini-moul
-else
-  printf "${RED}Current directory does not match expected pattern (C[00~13]).${DEFAULT}\n"
-  printf "${RED}Please navigate to an appropriate directory to run tests.${DEFAULT}\n"
-fi
-
-exit 1
-
-run_norminette() {
-  if command -v norminette &> /dev/null; then
-    norminette
-  else
-    echo "norminette not found, skipping norminette checks"
-  fi
+main() {
+  ensure_uv
+  bootstrap_tool
+  exec uv tool run --from "$REPO_ROOT" mini-moul "$@"
 }
+
+main "$@"

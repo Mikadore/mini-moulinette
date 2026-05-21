@@ -65,7 +65,8 @@ Why this is the best path now:
 ### File replacement mapping
 
 - Old runtime entrypoint (shell): `mini-moul.sh`
-  - Status: legacy, not removed.
+  - Status: compatibility shim.
+  - Current role: bootstraps an editable `uv` tool install from the local checkout, then forwards to the Python CLI.
   - Replacement for new work: `mini_moul.py`.
 - Old test orchestration logic (shell): `mini-moul/test.sh`
   - Status: legacy reference behavior.
