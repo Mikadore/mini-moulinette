@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import os
 import re
+import signal
 import shutil
 import subprocess
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -31,6 +32,14 @@ class ExerciseResult:
     errors: list[str] = field(default_factory=list)
     checks: int = 0
     passed: int = 0
+
+
+@dataclass
+class CommandResult:
+    returncode: int
+    stdout: str
+    stderr: str
+    timed_out: bool = False
 
 
 def resolve_assignment(requested: Optional[str], target_dir: Path) -> str:
@@ -85,7 +94,41 @@ def run_norminette(target_dir: Path, console: Console) -> None:
     subprocess.run(["norminette"], cwd=target_dir, check=False)
 
 
-def run_exercise(exercise_dir: Path, workspace: Path, compiler: str) -> ExerciseResult:
+def run_command(command: list[str], cwd: Path, timeout: float) -> CommandResult:
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        errors="replace",
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+        return CommandResult(
+            returncode=process.returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
+        return CommandResult(
+            returncode=124,
+            stdout=stdout,
+            stderr=stderr,
+            timed_out=True,
+        )
+
+
+def run_exercise(
+    exercise_dir: Path,
+    workspace: Path,
+    compiler: str,
+    compile_timeout: float,
+    run_timeout: float,
+) -> ExerciseResult:
     test_files = sorted(exercise_dir.glob("*.c"))
     exercise_name = exercise_dir.name
     test_name = test_files[0].name if test_files else "(no test file)"
@@ -97,8 +140,8 @@ def run_exercise(exercise_dir: Path, workspace: Path, compiler: str) -> Exercise
         return result
 
     sanity_bin = exercise_dir / "__mini_sanity__"
-    sanity = subprocess.run(
-        [
+    sanity = run_command(
+        command=[
             compiler,
             "-Wall",
             "-Werror",
@@ -108,12 +151,21 @@ def run_exercise(exercise_dir: Path, workspace: Path, compiler: str) -> Exercise
             str(test_files[0]),
         ],
         cwd=workspace,
-        capture_output=True,
-        text=True,
-        errors="replace",
-        check=False,
+        timeout=compile_timeout,
     )
     result.checks += 1
+    if sanity.timed_out:
+        result.ok = False
+        result.errors.append(
+            f"{test_name} sanity compile timed out after {compile_timeout:.1f}s."
+        )
+        if sanity.stdout:
+            result.errors.append(sanity.stdout.rstrip())
+        if sanity.stderr:
+            result.errors.append(sanity.stderr.rstrip())
+        if sanity_bin.exists():
+            sanity_bin.unlink()
+        return result
     if sanity.returncode != 0:
         result.ok = False
         result.errors.append(f"{test_name} cannot compile.")
@@ -129,15 +181,24 @@ def run_exercise(exercise_dir: Path, workspace: Path, compiler: str) -> Exercise
 
     for test_file in test_files:
         binary_path = test_file.with_suffix("")
-        compile_result = subprocess.run(
-            [compiler, "-o", str(binary_path), str(test_file)],
+        compile_result = run_command(
+            command=[compiler, "-o", str(binary_path), str(test_file)],
             cwd=workspace,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            check=False,
+            timeout=compile_timeout,
         )
         result.checks += 1
+        if compile_result.timed_out:
+            result.ok = False
+            result.errors.append(
+                f"Compiling {test_file.name} timed out after {compile_timeout:.1f}s."
+            )
+            if compile_result.stdout:
+                result.errors.append(compile_result.stdout.rstrip())
+            if compile_result.stderr:
+                result.errors.append(compile_result.stderr.rstrip())
+            if binary_path.exists():
+                binary_path.unlink()
+            continue
         if compile_result.returncode != 0:
             result.ok = False
             result.errors.append(f"Failed to compile {test_file.name}.")
@@ -147,14 +208,23 @@ def run_exercise(exercise_dir: Path, workspace: Path, compiler: str) -> Exercise
                 binary_path.unlink()
             continue
 
-        run_result = subprocess.run(
-            [f"./{binary_path.name}"],
+        run_result = run_command(
+            command=[f"./{binary_path.name}"],
             cwd=test_file.parent,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            check=False,
+            timeout=run_timeout,
         )
+        if run_result.timed_out:
+            result.ok = False
+            result.errors.append(
+                f"{test_file.name} timed out after {run_timeout:.1f}s."
+            )
+            if run_result.stdout:
+                result.errors.append(run_result.stdout.rstrip())
+            if run_result.stderr:
+                result.errors.append(run_result.stderr.rstrip())
+            if binary_path.exists():
+                binary_path.unlink()
+            continue
         if run_result.returncode == 0:
             result.passed += 1
         else:
@@ -178,6 +248,8 @@ def run_assignment_tests_parallel(
     assignment: str,
     compiler: str,
     jobs: int,
+    compile_timeout: float,
+    run_timeout: float,
     console: Console,
 ) -> tuple[list[ExerciseResult], int]:
     tests_root = workspace / "tests"
@@ -218,34 +290,53 @@ def run_assignment_tests_parallel(
             future_map = {}
             for exercise_dir in exercise_dirs:
                 task_id = task_ids[exercise_dir.name]
-                progress.update(task_id, description=f"[cyan]{exercise_dir.name}: running[/cyan]")
-                future = pool.submit(run_exercise, exercise_dir, workspace, compiler)
+                future = pool.submit(
+                    run_exercise,
+                    exercise_dir,
+                    workspace,
+                    compiler,
+                    compile_timeout,
+                    run_timeout,
+                )
                 future_map[future] = (exercise_dir.name, task_id)
+            pending = set(future_map)
+            running: set[str] = set()
 
-            for future in as_completed(future_map):
-                exercise_name, task_id = future_map[future]
-                try:
-                    result = future.result()
-                except Exception as exc:
-                    result = ExerciseResult(
-                        exercise_name=exercise_name,
-                        test_name="(internal error)",
-                        ok=False,
-                        errors=[f"Internal runner error: {exc}"],
-                    )
-                results[exercise_name] = result
-                if result.ok:
-                    progress.update(
-                        task_id,
-                        description=f"[green]{exercise_name}: PASS[/green]",
-                        completed=1,
-                    )
-                else:
-                    progress.update(
-                        task_id,
-                        description=f"[red]{exercise_name}: FAIL[/red]",
-                        completed=1,
-                    )
+            while pending:
+                for future in pending:
+                    exercise_name, task_id = future_map[future]
+                    if future.running() and exercise_name not in running:
+                        progress.update(
+                            task_id,
+                            description=f"[cyan]{exercise_name}: running[/cyan]",
+                        )
+                        running.add(exercise_name)
+
+                done, pending = wait(pending, timeout=0.1, return_when=FIRST_COMPLETED)
+                for future in done:
+                    exercise_name, task_id = future_map[future]
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = ExerciseResult(
+                            exercise_name=exercise_name,
+                            test_name="(internal error)",
+                            ok=False,
+                            errors=[f"Internal runner error: {exc}"],
+                        )
+                    results[exercise_name] = result
+                    if result.ok:
+                        progress.update(
+                            task_id,
+                            description=f"[green]{exercise_name}: PASS[/green]",
+                            completed=1,
+                        )
+                    else:
+                        progress.update(
+                            task_id,
+                            description=f"[red]{exercise_name}: FAIL[/red]",
+                            completed=1,
+                        )
 
     ordered_results = [results[exercise_dir.name] for exercise_dir in exercise_dirs]
     return ordered_results, len(exercise_dirs)
@@ -326,6 +417,18 @@ def main(
         min=1,
         help="Number of exercises to process in parallel.",
     ),
+    compile_timeout: float = typer.Option(
+        10.0,
+        "--compile-timeout",
+        min=0.1,
+        help="Maximum time allowed for each compile step in seconds.",
+    ),
+    run_timeout: float = typer.Option(
+        10.0,
+        "--run-timeout",
+        min=0.1,
+        help="Maximum time allowed for each test binary execution in seconds.",
+    ),
     workspace_root: Path = typer.Option(
         Path(tempfile.gettempdir()),
         "--workspace-root",
@@ -382,6 +485,8 @@ def main(
             assignment=resolved_assignment,
             compiler=compiler,
             jobs=jobs,
+            compile_timeout=compile_timeout,
+            run_timeout=run_timeout,
             console=console,
         )
         print_summary(

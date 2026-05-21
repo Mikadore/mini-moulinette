@@ -4,6 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
+BIN_DIR="${XDG_BIN_HOME:-${HOME}/.local/bin}"
+TOOL_BIN="$BIN_DIR/mini-moul"
 
 ensure_uv() {
   if command -v uv >/dev/null 2>&1; then
@@ -22,7 +24,14 @@ bootstrap_tool() {
 main() {
   ensure_uv
   bootstrap_tool
-  exec uv tool run --from "$REPO_ROOT" mini-moul "$@"
+
+  if [[ ! -x "$TOOL_BIN" ]]; then
+    printf 'mini-moul was installed, but the binary was not found at %s.\n' "$TOOL_BIN" >&2
+    printf 'Ensure %s exists and is on PATH.\n' "$BIN_DIR" >&2
+    exit 1
+  fi
+
+  exec "$TOOL_BIN" "$@"
 }
 
 main "$@"
