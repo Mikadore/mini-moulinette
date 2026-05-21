@@ -65,6 +65,8 @@ Why this is the best path now:
 - Added missing-exercise detection before compile/run, reporting skipped exercises as `MISSING` instead of surfacing compiler include errors.
 - Integrated per-exercise norminette checks into the execution pipeline without blocking compile/run, and report those notices in the summary.
 - Added a test-derived per-exercise whitelist check that warns about superfluous files at the end of the summary without affecting scoring or replacing the exercise result.
+- Centralized compile flags as a `CFLAGS`-style list with `-Wall -Werror -Wextra` defaults, overridable through the `CFLAGS` environment variable.
+- Added a targeted norminette override for `C08/ex01` and `C08/ex02` to run with `-R CheckDefine`.
 - Removed obsolete shell orchestration files: `mini-moul/test.sh` and `mini-moul/config.sh`.
 
 ### File replacement mapping

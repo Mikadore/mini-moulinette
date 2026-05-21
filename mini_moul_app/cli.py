@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import tempfile
 import time
@@ -11,7 +12,7 @@ import typer
 from rich.console import Console
 
 from mini_moul_app.discovery import resolve_assignment
-from mini_moul_app.execution import run_assignment_tests_parallel
+from mini_moul_app.execution import DEFAULT_CFLAGS, run_assignment_tests_parallel
 from mini_moul_app.reporting import print_header, print_summary
 from mini_moul_app.workspace import create_temp_root
 
@@ -98,6 +99,7 @@ def main(
     template_dir = repo_root / "mini-moul"
     start_time = time.time()
     notices: list[str] = []
+    cflags = shlex.split(os.environ.get("CFLAGS", " ".join(DEFAULT_CFLAGS)))
 
     resolved_assignment = resolve_assignment(assignment, target_dir)
     if not template_dir.exists():
@@ -119,6 +121,7 @@ def main(
             temp_root=temp_root,
             assignment=resolved_assignment,
             compiler=compiler,
+            cflags=cflags,
             jobs=jobs,
             compile_timeout=compile_timeout,
             run_timeout=run_timeout,

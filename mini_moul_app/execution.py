@@ -18,6 +18,9 @@ from mini_moul_app.models import CommandResult, ExerciseResult
 from mini_moul_app.workspace import prepare_exercise_workspace
 
 
+DEFAULT_CFLAGS = ["-Wall", "-Werror", "-Wextra"]
+
+
 def extract_norminette_messages(output: str, stderr: str) -> list[str]:
     messages: list[str] = []
     for line in output.splitlines():
@@ -42,6 +45,13 @@ def exercise_progress_description(result: ExerciseResult) -> str:
     if result.status == "missing":
         return f"[yellow]{result.exercise_name}: MISSING[/yellow]"
     return f"[red]{result.exercise_name}: FAIL[/red]"
+
+
+def norminette_command(assignment: str, exercise_name: str) -> list[str]:
+    command = ["norminette"]
+    if assignment == "C08" and exercise_name in {"ex01", "ex02"}:
+        command.extend(["-R", "CheckDefine"])
+    return command
 
 
 def run_command(command: list[str], cwd: Path, timeout: float) -> CommandResult:
@@ -79,6 +89,7 @@ def run_exercise(
     exercise_name: str,
     temp_root: Path,
     compiler: str,
+    cflags: list[str],
     compile_timeout: float,
     run_timeout: float,
     run_norminette_checks: bool,
@@ -111,7 +122,7 @@ def run_exercise(
 
     if run_norminette_checks:
         norminette_result = run_command(
-            command=["norminette"],
+            command=norminette_command(assignment, exercise_name),
             cwd=target_dir / exercise_name,
             timeout=compile_timeout,
         )
@@ -142,9 +153,7 @@ def run_exercise(
     sanity = run_command(
         command=[
             compiler,
-            "-Wall",
-            "-Werror",
-            "-Wextra",
+            *cflags,
             "-o",
             str(sanity_bin),
             str(test_files[0]),
@@ -181,7 +190,7 @@ def run_exercise(
     for test_file in test_files:
         binary_path = test_file.with_suffix("")
         compile_result = run_command(
-            command=[compiler, "-o", str(binary_path), str(test_file)],
+            command=[compiler, *cflags, "-o", str(binary_path), str(test_file)],
             cwd=workspace,
             timeout=compile_timeout,
         )
@@ -247,6 +256,7 @@ def run_assignment_tests_parallel(
     temp_root: Path,
     assignment: str,
     compiler: str,
+    cflags: list[str],
     jobs: int,
     compile_timeout: float,
     run_timeout: float,
@@ -297,6 +307,7 @@ def run_assignment_tests_parallel(
                     exercise_name,
                     temp_root,
                     compiler,
+                    cflags,
                     compile_timeout,
                     run_timeout,
                     run_norminette_checks,
