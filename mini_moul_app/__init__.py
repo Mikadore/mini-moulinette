@@ -1,0 +1,2 @@
+"""mini-moulinette application package."""
+

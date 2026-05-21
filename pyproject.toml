@@ -14,17 +14,19 @@ dependencies = [
 ]
 
 [project.scripts]
-mini-moul = "mini_moul:cli"
+mini-moul = "mini_moul_app.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 include = [
   "mini_moul.py",
+  "mini_moul_app/**/*.py",
   "mini-moul/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
   "mini_moul.py",
+  "mini_moul_app/**/*.py",
   "mini-moul/**",
   "README.md",
   "LICENSE",

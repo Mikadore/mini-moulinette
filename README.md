@@ -87,6 +87,7 @@ uv run mini_moul.py --target /path/to/C02
 ```
 
 The v2 runner keeps C tests separate and compiles/runs them from Python. It uses `rich` for terminal output, runs exercises in parallel (`--jobs`), and creates a temporary workspace in `/tmp` by default (`--workspace-root`).
+If an exercise is missing, the runner now skips compile/run for that exercise and reports it as missing instead of surfacing a compiler error, while keeping score gating unchanged.
 
 ## Debugging
 

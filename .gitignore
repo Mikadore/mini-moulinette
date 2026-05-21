@@ -14,3 +14,4 @@
 .DS_Store
 .vscode
 /exerc
+__pycache__/

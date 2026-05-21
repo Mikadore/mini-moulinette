@@ -61,6 +61,8 @@ Why this is the best path now:
 - Added consolidated error reporting at the end of execution.
 - Moved workspace strategy to a temporary directory (`/tmp` by default), while preserving compatibility with existing `../../../../exNN/...` include paths.
 - Kept `norminette` execution focused on the target assignment directory (not temporary copied test harnesses).
+- Split the Python runner into a package (`mini_moul_app`) and reduced `mini_moul.py` to a thin compatibility entrypoint.
+- Removed obsolete shell orchestration files: `mini-moul/test.sh` and `mini-moul/config.sh`.
 
 ### File replacement mapping
 
@@ -77,6 +79,7 @@ Why this is the best path now:
 ### New/updated project files
 
 - New: `mini_moul.py` (main runner).
+- New: `mini_moul_app/` (package with CLI, execution, reporting, discovery, and workspace modules).
 - New: `pyproject.toml` (dependencies, script entrypoint, build config).
 - Updated: `README.md` (v2 usage notes and behavior).
 - Updated: `MIGRATION_TO_PYTHON.md` (this file).
