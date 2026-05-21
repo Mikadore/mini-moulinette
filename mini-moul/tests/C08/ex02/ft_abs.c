@@ -2,59 +2,37 @@
 #include "../../../../ex02/ft_abs.h"
 #include "../../../utils/constants.h"
 
-typedef struct s_test
+static int	g_errors = 0;
+
+static void	report_check(int ok, const char *desc, int got, int expected)
 {
-        char *desc;
-        int input;
-        int expected;
-} t_test;
-
-int run_tests(t_test *tests, int count);
-
-int main(void)
-{
-        t_test tests[] = {
-            {
-                .desc = "Test 1: ABS with positive value",
-                .input = 5,
-                .expected = 5,
-            },
-            {
-                .desc = "Test 2: ABS with negative value",
-                .input = -5,
-                .expected = 5,
-            },
-            {
-                .desc = "Test 3: ABS with zero value",
-                .input = 0,
-                .expected = 0,
-            },
-        };
-
-        int count = sizeof(tests) / sizeof(tests[0]);
-
-        return (run_tests(tests, count));
+	if (!ok)
+	{
+		g_errors++;
+		printf("    " RED "[KO] %s (expected %d, got %d)\n" DEFAULT,
+			desc, expected, got);
+		return ;
+	}
+	printf("  " GREEN CHECKMARK GREY " %s\n" DEFAULT, desc);
 }
 
-int run_tests(t_test *tests, int count)
+int	main(void)
 {
-        int i;
-        int error = 0;
+	int	value;
 
-        for (i = 0; i < count; i++)
-        {
-                int result;
-
-                result = ABS(tests[i].input);
-                if (result != tests[i].expected)
-                {
-                        printf("    " RED "[%d] %s Expected %d, got %d\n" DEFAULT, i + 1, tests[i].desc, tests[i].expected, result);
-                        error++;
-                }
-                else
-                {
-                        printf("  " GREEN CHECKMARK GREY " [%d] %s Expected %d, got %d\n" DEFAULT, i + 1, tests[i].desc, result, tests[i].expected);
-                }
-        }
-        return error;
+	value = ABS(5);
+	report_check(value == 5, "ABS(5) == 5", value, 5);
+	value = ABS(-5);
+	report_check(value == 5, "ABS(-5) == 5", value, 5);
+	value = ABS(0);
+	report_check(value == 0, "ABS(0) == 0", value, 0);
+	value = ABS(2 - 5);
+	report_check(value == 3, "ABS(2 - 5) == 3", value, 3);
+	value = ABS(-3) * 2;
+	report_check(value == 6, "ABS(-3) * 2 == 6", value, 6);
+	value = 10 / ABS(-2);
+	report_check(value == 5, "10 / ABS(-2) == 5", value, 5);
+	value = ABS(-(7));
+	report_check(value == 7, "ABS(-(7)) == 7", value, 7);
+	return (g_errors);
 }

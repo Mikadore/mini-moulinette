@@ -1,46 +1,70 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <unistd.h>
+#include "../../../../ex00/ft.h"
+#include "../../../../ex00/ft.h"
 #include "../../../utils/constants.h"
 
-#define FUNCTION_COUNT 5
+static void (*g_putchar)(char) = ft_putchar;
+static void (*g_swap)(int *, int *) = ft_swap;
+static void (*g_putstr)(char *) = ft_putstr;
+static int (*g_strlen)(char *) = ft_strlen;
+static int (*g_strcmp)(char *, char *) = ft_strcmp;
 
-typedef struct
+void	ft_putchar(char c)
 {
-  char *name;
-  bool exists;
-} function_check;
+	(void)c;
+}
 
-int main()
+void	ft_swap(int *a, int *b)
 {
-  function_check functions[FUNCTION_COUNT] = {
-      {"ft_putchar", false},
-      {"ft_swap", false},
-      {"ft_putstr", false},
-      {"ft_strlen", false},
-      {"ft_strcmp", false},
-  };
+	int	tmp;
 
-  char buffer[128];
-  FILE *header_file = popen("cat ../ex00/ft.h", "r");
-  while (fgets(buffer, sizeof(buffer), header_file))
-  {
-    for (int i = 0; i < FUNCTION_COUNT; i++)
-    {
-      if (strstr(buffer, functions[i].name) != NULL)
-      {
-        functions[i].exists = true;
-      }
-    }
-  }
-  pclose(header_file);
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
 
-  for (int i = 0; i < FUNCTION_COUNT; i++)
-  {
-    printf("%s %s\n", functions[i].name, functions[i].exists ? "exists" : "does not exist");
-  }
+void	ft_putstr(char *str)
+{
+	(void)str;
+}
 
-  return 0;
+int	ft_strlen(char *str)
+{
+	int	len;
+
+	len = 0;
+	while (str && str[len])
+		len++;
+	return (len);
+}
+
+int	ft_strcmp(char *s1, char *s2)
+{
+	while (*s1 && *s1 == *s2)
+	{
+		s1++;
+		s2++;
+	}
+	return ((unsigned char)*s1 - (unsigned char)*s2);
+}
+
+int	main(void)
+{
+	int		a;
+	int		b;
+	char	text[] = "abc";
+
+	a = 1;
+	b = 2;
+	g_putchar('x');
+	g_swap(&a, &b);
+	g_putstr(text);
+	if (g_strlen(text) != 3)
+		return (1);
+	if (g_strcmp("abc", "abc") != 0)
+		return (1);
+	if (a != 2 || b != 1)
+		return (1);
+	printf("  " GREEN CHECKMARK GREY " Header declarations and signatures are valid.\n" DEFAULT);
+	return (0);
 }

@@ -1,16 +1,26 @@
 #include <stdio.h>
 #include "../../../../ex03/ft_point.h"
+#include "../../../../ex03/ft_point.h"
 #include "../../../utils/constants.h"
 
-void set_point(t_point *point)
+void	set_point(t_point *point)
 {
-        point->x = 42;
-        point->y = 21;
+	point->x = 42;
+	point->y = 21;
 }
-int main(void)
+
+int	main(void)
 {
-        t_point point;
-        set_point(&point);
-        printf("  " GREEN CHECKMARK GREY " File was able to compile.\n" DEFAULT);
-        return (0);
+	t_point	point;
+
+	point.x = 0;
+	point.y = 0;
+	set_point(&point);
+	if (point.x != 42 || point.y != 21)
+	{
+		printf("    " RED "[KO] set_point did not populate x/y correctly\n" DEFAULT);
+		return (1);
+	}
+	printf("  " GREEN CHECKMARK GREY " t_point structure and fields are valid.\n" DEFAULT);
+	return (0);
 }

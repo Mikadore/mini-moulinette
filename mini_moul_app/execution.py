@@ -19,6 +19,10 @@ from mini_moul_app.workspace import prepare_exercise_workspace
 
 
 DEFAULT_CFLAGS = ["-Wall", "-Werror", "-Wextra"]
+EXERCISE_INCLUDE_DIRS: dict[tuple[str, str], tuple[Path, ...]] = {
+    ("C08", "ex04"): (Path("tests") / "C08" / "ex04",),
+    ("C08", "ex05"): (Path("tests") / "C08" / "ex05" / "resources",),
+}
 
 
 def extract_norminette_messages(output: str, stderr: str) -> list[str]:
@@ -52,6 +56,14 @@ def norminette_command(assignment: str, exercise_name: str) -> list[str]:
     if assignment == "C08" and exercise_name in {"ex01", "ex02"}:
         command.extend(["-R", "CheckDefine"])
     return command
+
+
+def exercise_include_flags(assignment: str, exercise_name: str, workspace: Path) -> list[str]:
+    include_dirs = EXERCISE_INCLUDE_DIRS.get((assignment, exercise_name), ())
+    flags: list[str] = []
+    for include_dir in include_dirs:
+        flags.extend(["-I", str(workspace / include_dir)])
+    return flags
 
 
 def run_command(command: list[str], cwd: Path, timeout: float) -> CommandResult:
@@ -148,12 +160,14 @@ def run_exercise(
     )
     test_name = test_files[0].name if test_files else test_name
     result.test_name = test_name
+    include_flags = exercise_include_flags(assignment, exercise_name, workspace)
 
     sanity_bin = test_files[0].with_suffix("").with_name("__mini_sanity__")
     sanity = run_command(
         command=[
             compiler,
             *cflags,
+            *include_flags,
             "-o",
             str(sanity_bin),
             str(test_files[0]),
@@ -190,7 +204,14 @@ def run_exercise(
     for test_file in test_files:
         binary_path = test_file.with_suffix("")
         compile_result = run_command(
-            command=[compiler, *cflags, "-o", str(binary_path), str(test_file)],
+            command=[
+                compiler,
+                *cflags,
+                *include_flags,
+                "-o",
+                str(binary_path),
+                str(test_file),
+            ],
             cwd=workspace,
             timeout=compile_timeout,
         )
