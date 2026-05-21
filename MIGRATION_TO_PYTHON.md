@@ -64,7 +64,7 @@ Why this is the best path now:
 - Split the Python runner into a package (`mini_moul_app`) and reduced `mini_moul.py` to a thin compatibility entrypoint.
 - Added missing-exercise detection before compile/run, reporting skipped exercises as `MISSING` instead of surfacing compiler include errors.
 - Integrated per-exercise norminette checks into the execution pipeline without blocking compile/run, and report those notices in the summary.
-- Added a test-derived per-exercise whitelist check that warns about superfluous files without affecting scoring.
+- Added a test-derived per-exercise whitelist check that warns about superfluous files at the end of the summary without affecting scoring or replacing the exercise result.
 - Removed obsolete shell orchestration files: `mini-moul/test.sh` and `mini-moul/config.sh`.
 
 ### File replacement mapping

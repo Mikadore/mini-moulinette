@@ -35,8 +35,6 @@ def extract_norminette_messages(output: str, stderr: str) -> list[str]:
 
 
 def exercise_progress_description(result: ExerciseResult) -> str:
-    if result.status == "ok" and result.has_extra_files:
-        return f"[orange3]{result.exercise_name}: WARN[/orange3]"
     if result.status == "ok" and result.has_norminette_issues:
         return f"[orange3]{result.exercise_name}: NORM[/orange3]"
     if result.status == "ok":
