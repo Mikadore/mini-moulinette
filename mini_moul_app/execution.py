@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import signal
-import shutil
 import subprocess
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
@@ -15,12 +14,20 @@ from mini_moul_app.models import CommandResult, ExerciseResult
 from mini_moul_app.workspace import prepare_exercise_workspace
 
 
-def run_norminette(target_dir: Path, console: Console) -> None:
-    if shutil.which("norminette") is None:
-        console.print("norminette not found, skipping norminette checks")
-        return
-    console.print("[cyan]Running norminette...[/cyan]")
-    subprocess.run(["norminette"], cwd=target_dir, check=False)
+def extract_norminette_messages(output: str, stderr: str) -> list[str]:
+    messages: list[str] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("Setting locale to "):
+            continue
+        if stripped.endswith(": OK!"):
+            continue
+        messages.append(line)
+    if stderr.strip():
+        messages.append(stderr.rstrip())
+    return messages
 
 
 def run_command(command: list[str], cwd: Path, timeout: float) -> CommandResult:
@@ -60,6 +67,7 @@ def run_exercise(
     compiler: str,
     compile_timeout: float,
     run_timeout: float,
+    run_norminette_checks: bool,
 ) -> ExerciseResult:
     source_test_dir = template_dir / "tests" / assignment / exercise_name
     source_test_files = sorted(source_test_dir.glob("*.c"))
@@ -79,6 +87,25 @@ def run_exercise(
             + ", ".join(path.as_posix() for path in missing_paths)
         )
         return result
+
+    if run_norminette_checks:
+        norminette_result = run_command(
+            command=["norminette"],
+            cwd=target_dir / exercise_name,
+            timeout=compile_timeout,
+        )
+        if norminette_result.timed_out:
+            result.norminette_messages.append(
+                f"norminette timed out after {compile_timeout:.1f}s."
+            )
+        else:
+            norminette_messages = extract_norminette_messages(
+                norminette_result.stdout,
+                norminette_result.stderr,
+            )
+            if norminette_result.returncode != 0 and not norminette_messages:
+                norminette_messages.append("norminette reported an error.")
+            result.norminette_messages.extend(norminette_messages)
 
     _, workspace, test_files = prepare_exercise_workspace(
         template_dir=template_dir,
@@ -202,6 +229,7 @@ def run_assignment_tests_parallel(
     jobs: int,
     compile_timeout: float,
     run_timeout: float,
+    run_norminette_checks: bool,
     console: Console,
 ) -> tuple[list[ExerciseResult], int]:
     tests_root = template_dir / "tests"
@@ -250,6 +278,7 @@ def run_assignment_tests_parallel(
                     compiler,
                     compile_timeout,
                     run_timeout,
+                    run_norminette_checks,
                 )
                 future_map[future] = (exercise_name, task_id)
             pending = set(future_map)
@@ -278,7 +307,9 @@ def run_assignment_tests_parallel(
                             errors=[f"Internal runner error: {exc}"],
                         )
                     results[exercise_name] = result
-                    if result.status == "ok":
+                    if result.status == "ok" and result.has_norminette_issues:
+                        description = f"[orange3]{exercise_name}: NORM[/orange3]"
+                    elif result.status == "ok":
                         description = f"[green]{exercise_name}: PASS[/green]"
                     elif result.status == "missing":
                         description = f"[yellow]{exercise_name}: MISSING[/yellow]"
@@ -288,4 +319,3 @@ def run_assignment_tests_parallel(
 
     ordered_results = [results[exercise_name] for exercise_name in exercise_names]
     return ordered_results, len(exercise_names)
-

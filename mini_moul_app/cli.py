@@ -11,8 +11,8 @@ import typer
 from rich.console import Console
 
 from mini_moul_app.discovery import resolve_assignment
-from mini_moul_app.execution import run_assignment_tests_parallel, run_norminette
-from mini_moul_app.reporting import print_summary
+from mini_moul_app.execution import run_assignment_tests_parallel
+from mini_moul_app.reporting import print_header, print_summary
 from mini_moul_app.workspace import create_temp_root
 
 
@@ -84,6 +84,8 @@ def main(
     ),
 ) -> None:
     console = Console(no_color=no_color)
+    print_header(console)
+
     target_dir = (target or Path.cwd()).resolve()
     if not target_dir.exists() or not target_dir.is_dir():
         console.print(f"[red]Invalid target directory: {target_dir}[/red]")
@@ -95,6 +97,7 @@ def main(
     repo_root = Path(__file__).resolve().parent.parent
     template_dir = repo_root / "mini-moul"
     start_time = time.time()
+    notices: list[str] = []
 
     resolved_assignment = resolve_assignment(assignment, target_dir)
     if not template_dir.exists():
@@ -104,8 +107,9 @@ def main(
     temp_root: Optional[Path] = None
     try:
         temp_root = create_temp_root(workspace_root)
-        if norminette:
-            run_norminette(target_dir, console)
+        run_norminette_checks = norminette and shutil.which("norminette") is not None
+        if norminette and not run_norminette_checks:
+            notices.append("norminette not found, skipping per-exercise norm checks.")
         console.print(
             f"Running tests for [bold]{resolved_assignment}[/bold] with [bold]{jobs}[/bold] worker(s)..."
         )
@@ -118,6 +122,7 @@ def main(
             jobs=jobs,
             compile_timeout=compile_timeout,
             run_timeout=run_timeout,
+            run_norminette_checks=run_norminette_checks,
             console=console,
         )
         print_summary(
@@ -126,6 +131,7 @@ def main(
             questions=questions,
             start_time=start_time,
             console=console,
+            notices=notices,
         )
     except KeyboardInterrupt:
         console.print("[red]Script aborted by user. Cleaning up...[/red]")
