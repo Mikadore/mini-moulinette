@@ -89,7 +89,8 @@ uv run mini-moul --target /path/to/42piscine/C02
 The v2 runner keeps C tests separate and compiles/runs them from Python. It uses `rich` for terminal output, runs exercises in parallel (`--jobs`), and creates a temporary workspace in `/tmp` by default (`--workspace-root`).
 If an exercise is missing, the runner now skips compile/run for that exercise and reports it as missing instead of surfacing a compiler error, while keeping score gating unchanged.
 If an exercise directory contains files outside the test-derived whitelist for that exercise, the runner reports them as a non-fatal warning at the end of the summary without changing the displayed exercise result.
-Compilation defaults to `-Wall -Werror -Wextra`, and you can override that by setting `CFLAGS`, for example `CFLAGS='-Wall -Wextra' mini-moul --target /path/to/C01`.
+Compilation defaults to `-Wall -Werror -Wextra`. If a build fails only because of `-Werror`, the runner retries that build without `-Werror`, marks the exercise in orange, and prints the warnings in a dedicated compiler warning report so you can fix them before moulinette.
+You can still override compile flags via `CFLAGS`, for example `CFLAGS='-Wall -Wextra' mini-moul --target /path/to/C01`.
 The local reference tree used in this repository is now `42piscine/` rather than the old `exerc` symlink setup.
 
 ## Debugging

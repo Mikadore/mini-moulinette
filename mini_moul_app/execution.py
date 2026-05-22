@@ -41,9 +41,85 @@ def extract_norminette_messages(output: str, stderr: str) -> list[str]:
     return messages
 
 
+def cflags_include_werror(cflags: list[str]) -> bool:
+    return any(flag == "-Werror" or flag.startswith("-Werror=") for flag in cflags)
+
+
+def cflags_without_werror(cflags: list[str]) -> list[str]:
+    return [flag for flag in cflags if flag != "-Werror" and not flag.startswith("-Werror=")]
+
+
+def combine_command_output(result: CommandResult) -> str:
+    chunks: list[str] = []
+    if result.stderr.strip():
+        chunks.append(result.stderr.rstrip())
+    if result.stdout.strip():
+        chunks.append(result.stdout.rstrip())
+    return "\n".join(chunks)
+
+
+def compile_command(
+    compiler: str,
+    cflags: list[str],
+    include_flags: list[str],
+    output_path: Path,
+    source_file: Path,
+) -> list[str]:
+    return [
+        compiler,
+        *cflags,
+        *include_flags,
+        "-o",
+        str(output_path),
+        str(source_file),
+    ]
+
+
+def compile_with_warning_fallback(
+    compiler: str,
+    cflags: list[str],
+    include_flags: list[str],
+    output_path: Path,
+    source_file: Path,
+    cwd: Path,
+    timeout: float,
+    warning_context: str,
+) -> tuple[CommandResult, list[str]]:
+    primary_result = run_command(
+        command=compile_command(compiler, cflags, include_flags, output_path, source_file),
+        cwd=cwd,
+        timeout=timeout,
+    )
+    if primary_result.timed_out or primary_result.returncode == 0:
+        return primary_result, []
+    if not cflags_include_werror(cflags):
+        return primary_result, []
+
+    relaxed_cflags = cflags_without_werror(cflags)
+    if relaxed_cflags == cflags:
+        return primary_result, []
+
+    relaxed_result = run_command(
+        command=compile_command(compiler, relaxed_cflags, include_flags, output_path, source_file),
+        cwd=cwd,
+        timeout=timeout,
+    )
+    if relaxed_result.timed_out:
+        return relaxed_result, []
+    if relaxed_result.returncode != 0:
+        return relaxed_result, []
+
+    warning_output = combine_command_output(relaxed_result)
+    if warning_output:
+        return relaxed_result, [f"{warning_context}:\n{warning_output}"]
+    return relaxed_result, [f"{warning_context}: compiled only after removing -Werror."]
+
+
 def exercise_progress_description(result: ExerciseResult) -> str:
-    if result.status == "ok" and result.has_norminette_issues:
-        return f"[orange3]{result.exercise_name}: NORM[/orange3]"
+    if result.status == "ok" and (
+        result.has_norminette_issues or result.has_compiler_warnings
+    ):
+        return f"[orange3]{result.exercise_name}: {result.passed}/{result.checks}[/orange3]"
     if result.status == "ok":
         return f"[green]{result.exercise_name}: PASS[/green]"
     if result.status == "missing":
@@ -163,19 +239,20 @@ def run_exercise(
     include_flags = exercise_include_flags(assignment, exercise_name, workspace)
 
     sanity_bin = test_files[0].with_suffix("").with_name("__mini_sanity__")
-    sanity = run_command(
-        command=[
-            compiler,
-            *cflags,
-            *include_flags,
-            "-o",
-            str(sanity_bin),
-            str(test_files[0]),
-        ],
+    sanity, sanity_warnings = compile_with_warning_fallback(
+        compiler=compiler,
+        cflags=cflags,
+        include_flags=include_flags,
+        output_path=sanity_bin,
+        source_file=test_files[0],
         cwd=workspace,
         timeout=compile_timeout,
+        warning_context=f"{test_name} sanity compile",
     )
     result.checks += 1
+    for warning in sanity_warnings:
+        if warning not in result.compiler_warning_messages:
+            result.compiler_warning_messages.append(warning)
     if sanity.timed_out:
         result.status = "failed"
         result.errors.append(
@@ -203,19 +280,20 @@ def run_exercise(
 
     for test_file in test_files:
         binary_path = test_file.with_suffix("")
-        compile_result = run_command(
-            command=[
-                compiler,
-                *cflags,
-                *include_flags,
-                "-o",
-                str(binary_path),
-                str(test_file),
-            ],
+        compile_result, compile_warnings = compile_with_warning_fallback(
+            compiler=compiler,
+            cflags=cflags,
+            include_flags=include_flags,
+            output_path=binary_path,
+            source_file=test_file,
             cwd=workspace,
             timeout=compile_timeout,
+            warning_context=f"Compiling {test_file.name}",
         )
         result.checks += 1
+        for warning in compile_warnings:
+            if warning not in result.compiler_warning_messages:
+                result.compiler_warning_messages.append(warning)
         if compile_result.timed_out:
             result.status = "failed"
             result.errors.append(

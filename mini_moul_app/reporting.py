@@ -27,8 +27,12 @@ def print_summary(
     passed = sum(result.passed for result in results)
 
     for result in results:
-        if result.status == "ok" and result.has_norminette_issues:
-            result_parts.append(f"[orange3]{result.exercise_name}: NORM[/orange3]")
+        if result.status == "ok" and (
+            result.has_norminette_issues or result.has_compiler_warnings
+        ):
+            result_parts.append(
+                f"[orange3]{result.exercise_name}: {result.passed}/{result.checks}[/orange3]"
+            )
             if not break_score:
                 marks += 1
         elif result.status == "ok":
@@ -64,6 +68,7 @@ def print_summary(
 
     missing = [result for result in results if result.status == "missing"]
     norm_issues = [result for result in results if result.has_norminette_issues]
+    compiler_warnings = [result for result in results if result.has_compiler_warnings]
     extra_files = [result for result in results if result.has_extra_files]
     failed = [result for result in results if result.status == "failed"]
     if missing:
@@ -80,6 +85,19 @@ def print_summary(
         for result in norm_issues:
             console.print(f"[orange3]{result.exercise_name}/{result.test_name}[/orange3]")
             for message in result.norminette_messages:
+                console.print(message)
+            console.print("")
+    if compiler_warnings:
+        console.print("")
+        console.print("[bold orange3]Compiler warning report[/bold orange3]")
+        console.print(
+            "[orange3]These exercises compiled only after retrying without -Werror. "
+            "You may fail moulinette where the subject PDF enforces -Werror.[/orange3]"
+        )
+        console.print("")
+        for result in compiler_warnings:
+            console.print(f"[orange3]{result.exercise_name}/{result.test_name}[/orange3]")
+            for message in result.compiler_warning_messages:
                 console.print(message)
             console.print("")
     if failed:

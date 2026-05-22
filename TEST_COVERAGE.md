@@ -20,16 +20,16 @@ I also ran controlled probes from `/tmp` copies of `42piscine/C07` to validate d
 |---|---:|---|
 | C00 | 88/100 | `ex08` missing in student tree |
 | C01 | 100/100 | all current tests pass |
-| C02 | 84/100 | `ex11` compile warning/error in student code, `ex12` placeholder/fails |
+| C02 | 92/100 | `ex11` warning-only `-Werror` fallback in student code, `ex12` placeholder/fails |
 | C03 | 100/100 | all current tests pass |
 | C04 | 100/100 | all current tests pass |
 | C05 | 88/100 | `ex08` missing in student tree |
 | C06 | 100/100 | all current tests pass |
-| C07 | 66/100 | `ex04` compile warning/error in student code |
+| C07 | 100/100 | `ex04` warning-only `-Werror` fallback in student code |
 | C08 | 100/100 | all current tests pass |
 | C09 | N/A | runner reports tests unavailable |
 
-Note: compile failures shown above for `C02/ex11` and `C07/ex04` are student-file issues; they are not test harness compile bugs.
+Note: warning-only `-Werror` fallbacks shown above for `C02/ex11` and `C07/ex04` are student-file issues; they are not test harness compile bugs.
 
 ---
 
@@ -333,7 +333,7 @@ Note: compile failures shown above for `C02/ex11` and `C07/ex04` are student-fil
 
 ### ex11 `ft_putstr_non_printable.c`
 
-- Current status: FAIL in current student code (compile warning treated as error).
+- Current status: PASS with compiler warning report (`-Werror` fallback path).
 - Current checks: multiple printable/non-printable conversion cases.
 - Issues in test file:
   - One case label/value mismatch (`"\x01"` description, but source is `"\t01"`).
@@ -648,7 +648,7 @@ Note: compile failures shown above for `C02/ex11` and `C07/ex04` are student-fil
 
 ### ex04 `ft_convert_base.c`
 
-- Current status: FAIL in current student code (compile warning error).
+- Current status: PASS with compiler warning report (`-Werror` fallback path).
 - Current checks: positive/negative conversion and invalid base cases.
 - Issues:
   - Missing explicit zero-conversion case (`"0"`).
@@ -779,4 +779,3 @@ Plan (subject-driven, non-breaking with existing runner architecture):
 - No known harness false-positive class remaining (especially C07/ex01).
 - Placeholder exercises converted to real deterministic checks.
 - Memory/resource hygiene warnings from harness code reduced/eliminated.
-

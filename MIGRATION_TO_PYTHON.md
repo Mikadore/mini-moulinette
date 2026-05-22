@@ -39,6 +39,7 @@ Why this is the best path now:
   - Optional `norminette` run.
   - For each exercise (parallelizable via `--jobs`):
     - compile a sanity build with `-Wall -Werror -Wextra`,
+    - if compile fails only because of `-Werror`, retry without `-Werror` and keep an orange warning report,
     - compile each test harness,
     - run test binaries and collect exit codes,
     - preserve score gating behavior.
@@ -66,6 +67,7 @@ Why this is the best path now:
 - Integrated per-exercise norminette checks into the execution pipeline without blocking compile/run, and report those notices in the summary.
 - Added a test-derived per-exercise whitelist check that warns about superfluous files at the end of the summary without affecting scoring or replacing the exercise result.
 - Centralized compile flags as a `CFLAGS`-style list with `-Wall -Werror -Wextra` defaults, overridable through the `CFLAGS` environment variable.
+- Updated warning semantics: exercises with norminette issues and/or warning-only `-Werror` compile failures are shown in orange with their per-exercise check score, while warning details remain in end-of-run reports.
 - Added a targeted norminette override for `C08/ex01` and `C08/ex02` to run with `-R CheckDefine`.
 - Removed obsolete shell orchestration files: `mini-moul/test.sh` and `mini-moul/config.sh`.
 
@@ -114,11 +116,11 @@ Why this is the best path now:
 - Observed results with `./.venv/bin/python mini_moul.py --target /home/mikadore/mini-moulinette/42piscine/CXX --no-color`:
   - `C00`: `88/100` (`ex05` norminette notice, `ex08` missing)
   - `C01`: `100/100`
-  - `C02`: `84/100` (`ex11` compile failure, `ex12` compile failure and norminette issues)
+  - `C02`: `92/100` (`ex11` warning-only `-Werror` fallback, `ex12` compile failure and norminette issues)
   - `C03`: `100/100`
   - `C04`: `100/100`
   - `C05`: `88/100` (`ex08` missing)
   - `C06`: `100/100`
-  - `C07`: `66/100` (`ex04` compile failure)
+  - `C07`: `100/100` (`ex04` warning-only `-Werror` fallback plus norminette notice)
 - The extra-file whitelist check was validated against `42piscine/C00..C07` with no unexpected files reported in the current tree.
 - `C07/ex04/ft_convert_base2.c` is intentionally accepted by the whitelist because the test harness references it via `__has_include`.
